@@ -25,9 +25,6 @@ Our goal is to create more *empathetic*, *context‑aware*, and *human‑aligned
 * **Plug-and-Play Middleware**
   Head can sit between *any* input and chatbot model.
 
-* **Local LLM Integration via Ollama**
-  Connects seamlessly with Mistral, Llama, Qwen, or any model running on Ollama.
-
 * **Interactive Streamlit UI**
   Complete frontend for testing and demonstrating emotion-aware interactions.
 
@@ -47,7 +44,7 @@ User → Head (Emotion Extractor) → Emotion Tags → LLM (Ollama) → Chatbot 
 
 ### 🔹 LLM Response Generator
 
-* Uses local Ollama runtime.
+* Uses Hugging Face Chat Completion APIs.
 * Injects emotion tags + user text into the prompt.
 
 ### 🔹 Why Middleware?
@@ -72,9 +69,6 @@ Run with:
 ```bash
 streamlit run app.py
 ```
-
-Make sure Ollama is running locally.
-
 ---
 
 ## 📦 Installation
@@ -82,54 +76,25 @@ Make sure Ollama is running locally.
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-org/head-architecture.git
-cd head-architecture
+git clone https://github.com/2RAJARYAN/EmotionalChat_web.git
+cd EmotionalChat_web
+```
+### 2. Create a vene
+
+```bash
+python -m venv .venv
 ```
 
-### 2. Install dependencies
+### 3. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Install Ollama
-
-Follow instructions at: [https://ollama.com/download](https://ollama.com/download)
-
-Start a model:
-
-```bash
-ollama pull mistral:latest
-```
-
-### 4. Add your HuggingFace Token
-
-If deploying to Spaces:
-
-```bash
-git config --global credential.helper store
-huggingface-cli login
-```
-
-This saves your token for pushing updates.
-
----
-
-## 🏋️‍♂️ Training the Head Model
-
-Training scripts are inside `training/`.
-
-Run preprocessing + fine‑tuning:
-
-```bash
-python train_goemotions.py
-```
-
-Weights will be saved under:
-
-```
-models/head-bert-goemotions/
-```
+### 4. Setup .streamlit/secrets.toml
+- Create a Folder name .streamlit
+- A File called secrets.toml
+- This store the HF_TOKEN, EMOTION_MODEL_ID, LLM_MODEL_ID
 
 ---
 
@@ -158,7 +123,6 @@ Pull requests are welcome! For major changes, please open an issue first.
 
 * Google’s GoEmotions dataset
 * HuggingFace Transformers
-* Ollama project
 
 ---
 

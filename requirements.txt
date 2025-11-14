@@ -1,0 +1,7 @@
+accelerate==1.11.0
+altair==5.5.0
+hf-xet==1.2.0
+huggingface-hub==0.36.0
+streamlit==1.51.0
+torch==2.9.1
+transformers==4.57.1

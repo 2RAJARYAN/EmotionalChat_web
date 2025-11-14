@@ -1,139 +1,143 @@
 # app.py
 import os
-import requests
-import streamlit as st
 import torch
+import streamlit as st
 from typing import List, Tuple
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
-from langchain_ollama import ChatOllama
+from huggingface_hub import login
+from huggingface_hub import InferenceClient
 
 
-# Configuration
-OLLAMA_BASE = "http://127.0.0.1:11434"
-OLLAMA_MODEL = "mistral"
-EMOTION_MODEL_ID = "./final_model"
+#  CONFIG 
+HF_TOKEN = st.secrets["HF_TOKEN"]
+EMOTION_MODEL_ID = st.secrets["EMOTION_MODEL_ID"]
+LLM_MODEL_ID = st.secrets["LLM_MODEL_ID"]
+
 EMOTION_THRESHOLD = 0.35
 TOP_K = 3
 
+# Login to HF
+login(HF_TOKEN)
 
-# Load Emotion Model Once
+
+#  EMOTION MODEL 
 @st.cache_resource(show_spinner=False)
 def load_emotion_model():
-    tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_ID)
-    model = AutoModelForSequenceClassification.from_pretrained(EMOTION_MODEL_ID)
+    tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_ID,token = HF_TOKEN, use_fast=True)
+    model = AutoModelForSequenceClassification.from_pretrained(
+        EMOTION_MODEL_ID,
+        device_map="cpu",
+        token = HF_TOKEN
+    )
     model.eval()
     return tokenizer, model
 
 
-
 tokenizer, emo_model = load_emotion_model()
 
-# GoEmotions label mapping (clean)
+
+#  LABELS 
 GOEMOTIONS_LABELS = {
-    0: "admiration",
-    1: "amusement",
-    2: "anger",
-    3: "annoyance",
-    4: "approval",
-    5: "caring",
-    6: "confusion",
-    7: "curiosity",
-    8: "desire",
-    9: "disappointment",
-    10: "disapproval",
-    11: "disgust",
-    12: "embarrassment",
-    13: "excitement",
-    14: "fear",
-    15: "gratitude",
-    16: "grief",
-    17: "joy",
-    18: "love",
-    19: "nervousness",
-    20: "optimism",
-    21: "pride",
-    22: "realization",
-    23: "relief",
-    24: "remorse",
-    25: "sadness",
-    26: "surprise",
-    27: "neutral"
+    0: "admiration", 1: "amusement", 2: "anger", 3: "annoyance",
+    4: "approval", 5: "caring", 6: "confusion", 7: "curiosity",
+    8: "desire", 9: "disappointment", 10: "disapproval", 11: "disgust",
+    12: "embarrassment", 13: "excitement", 14: "fear", 15: "gratitude",
+    16: "grief", 17: "joy", 18: "love", 19: "nervousness",
+    20: "optimism", 21: "pride", 22: "realization", 23: "relief",
+    24: "remorse", 25: "sadness", 26: "surprise", 27: "neutral"
 }
 
 
-# Emotion Detection 
-
+#  EMOTION DETECTION 
 def detect_emotions(text: str, top_k: int = TOP_K) -> List[Tuple[str, float]]:
-    inputs = tokenizer(text, padding=True, truncation=True, return_tensors="pt")
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True).to("cpu")
 
     with torch.no_grad():
-        logits = emo_model(**inputs).logits.squeeze(0)
+        logits = emo_model(**inputs).logits.squeeze(0).cpu()
         probs = torch.sigmoid(logits).numpy()
 
-    emotion_probs = [
-        (GOEMOTIONS_LABELS[i], float(p))
-        for i, p in enumerate(probs)
-    ]
-
-    # Sort and filter
+    emotion_probs = [(GOEMOTIONS_LABELS[i], float(p)) for i, p in enumerate(probs)]
     emotion_probs.sort(key=lambda x: x[1], reverse=True)
-    filtered = [(e, p) for e, p in emotion_probs if p >= EMOTION_THRESHOLD][:top_k]
 
+    filtered = [(e, p) for e, p in emotion_probs if p >= EMOTION_THRESHOLD][:top_k]
     return filtered if filtered else [emotion_probs[0]]
 
 
+#  HUGGINGFACE LLM CLIENT 
+@st.cache_resource(show_spinner=False)
+def load_llm_client():
+    return InferenceClient(
+        model=LLM_MODEL_ID,
+        token=HF_TOKEN
+    )
 
-# Simple Ollama Call
-def call_ollama(prompt: str) -> str:
-    llm = ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE, temperature=0.6)
-    result = llm.invoke(prompt)
-    return result.content if hasattr(result, "content") else str(result)
+
+llm_client = load_llm_client()
 
 
+def call_llm(prompt: str) -> str:
+    """Use HF Inference Chat Completion API."""
+    try:
+        response = llm_client.chat_completion(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=250,
+            temperature=0.6,
+        )
+        return response.choices[0].message["content"]
 
-# Streamlit UI
-st.set_page_config(page_title="Emotion-aware Chatbot", page_icon="🤗")
-st.title("Emotion-Aware Chatbot 💬🤗")
+    except Exception as e:
+        if "429" in str(e):
+            return "HuggingFace API Rate Limit reached. Please wait."
+        return f"[LLM Error] {str(e)}"
+
+
+#  STREAMLIT UI 
+st.set_page_config(page_title="Emotion-Aware Chatbot")
+st.title("Emotion-Aware Chatbot")
 
 if "history" not in st.session_state:
     st.session_state.history = []
 
-# Show history
+
+# Display chat history
 for msg in st.session_state.history:
     st.chat_message(msg["role"]).write(msg["text"])
 
-# User input
+
+#  USER INPUT 
 user_text = st.chat_input("Type a message...")
 
 if user_text:
+
     # Add user message
     st.session_state.history.append({"role": "user", "text": user_text})
     st.chat_message("user").write(user_text)
 
-    # Detect emotion
+    # Emotion detection
     detected = detect_emotions(user_text)
     emo_str = ", ".join([f"{e} ({p:.2f})" for e, p in detected])
-    st.markdown(f"**Detected emotions:** {emo_str} ")
 
-    # Build conversation history string
-    conv = "\n".join([f"{m['role'].title()}: {m['text']}" for m in st.session_state.history])
+    st.markdown("### Detected Emotions")
+    st.markdown(f"**{emo_str}**")
 
-    # Prompt to LLM
+    # Conversation history for LLM
+    conv_text = "\n".join([f"{m['role'].title()}: {m['text']}" for m in st.session_state.history])
+
+    # Prompt for LLM
     prompt = f"""
-You are an empathetic assistant. Use detected emotions to respond kindly.
+                You are an empathetic AI assistant. If emotion tags are provided, adjust your tone accordingly.
 
-Detected emotions: {emo_str}
+                Detected emotions: {emo_str}
 
-Conversation:
-{conv}
+                Conversation so far:
+                {conv_text}
 
-Now reply to the user's last message in an empathetic and helpful tone:
-"""
+                Now generate a helpful, empathetic response to the user's last message.
+            """
 
     with st.spinner("Thinking..."):
-        assistant_text = call_ollama(prompt)
+        assistant_reply = call_llm(prompt)
 
-    # Save & display
-    st.session_state.history.append({"role": "assistant", "text": assistant_text})
-    st.chat_message("assistant").write(assistant_text)
-
+    # Display and store reply
+    st.session_state.history.append({"role": "assistant", "text": assistant_reply})
+    st.chat_message("assistant").write(assistant_reply)
