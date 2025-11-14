@@ -1,1 +1,165 @@
-# EmotionalChat_web
+# Head: A Modular Emotion-Aware Middleware for LLM-Powered Chatbots
+
+## 🌟 Overview
+
+Head is a modular middleware architecture designed to make Large Language Models (LLMs) **emotionally aware**. Instead of retraining or fine‑tuning large models, Head acts as a plug‑and‑play component that analyzes user input, extracts emotional signals, and passes emotion‑tagged metadata to any downstream chatbot model.
+
+This repository contains:
+
+* 🧠 **Head Module** — A BERT-based multi‑label emotion classifier trained on GoEmotions.
+* 💬 **Emotion-Aware Chat Application** — A Streamlit UI that integrates the Head module with a locally running LLM using Ollama.
+* ⚙️ **Middleware Architecture** — Clean, modular design for easy integration into any chatbot system.
+
+Our goal is to create more *empathetic*, *context‑aware*, and *human‑aligned* conversational agents.
+
+---
+
+## 🚀 Features
+
+* **Multi-label Emotion Classification**
+  Powered by a fine‑tuned BERT model on GoEmotions (simplified variant, 28 emotions).
+
+* **Probabilistic Emotion Outputs**
+  Each input message returns emotion scores with threshold-based multi-label selection.
+
+* **Plug-and-Play Middleware**
+  Head can sit between *any* input and chatbot model.
+
+* **Local LLM Integration via Ollama**
+  Connects seamlessly with Mistral, Llama, Qwen, or any model running on Ollama.
+
+* **Interactive Streamlit UI**
+  Complete frontend for testing and demonstrating emotion-aware interactions.
+
+---
+
+## 🧩 Architecture
+
+```
+User → Head (Emotion Extractor) → Emotion Tags → LLM (Ollama) → Chatbot Response
+```
+
+### 🔹 Head Module
+
+* Built on `AutoModelForSequenceClassification` from HuggingFace.
+* Multi-label BCEWithLogits setup.
+* Thresholding per emotion class.
+
+### 🔹 LLM Response Generator
+
+* Uses local Ollama runtime.
+* Injects emotion tags + user text into the prompt.
+
+### 🔹 Why Middleware?
+
+* No need to fine‑tune LLMs.
+* Works with *any* model.
+* Modular, interpretable, and expandable (audio/video/physiological modalities later).
+
+---
+
+## 🖥️ Streamlit Demo
+
+The app provides:
+
+* Input text box
+* Predicted emotions + probabilities
+* Emotion-aware LLM response
+* Debug panel for prompt inspection
+
+Run with:
+
+```bash
+streamlit run app.py
+```
+
+Make sure Ollama is running locally.
+
+---
+
+## 📦 Installation
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/your-org/head-architecture.git
+cd head-architecture
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Install Ollama
+
+Follow instructions at: [https://ollama.com/download](https://ollama.com/download)
+
+Start a model:
+
+```bash
+ollama pull mistral:latest
+```
+
+### 4. Add your HuggingFace Token
+
+If deploying to Spaces:
+
+```bash
+git config --global credential.helper store
+huggingface-cli login
+```
+
+This saves your token for pushing updates.
+
+---
+
+## 🏋️‍♂️ Training the Head Model
+
+Training scripts are inside `training/`.
+
+Run preprocessing + fine‑tuning:
+
+```bash
+python train_goemotions.py
+```
+
+Weights will be saved under:
+
+```
+models/head-bert-goemotions/
+```
+
+---
+
+## 🧠 Future Scope
+
+* Multimodal Head (text + audio + video)
+* Novel emotion decoding algorithms
+* Benchmark suite for emotional coherence and empathy
+* Publication in NLP/affective computing venues
+
+---
+
+## 📄 License
+
+MIT License.
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! For major changes, please open an issue first.
+
+---
+
+## ⭐ Acknowledgements
+
+* Google’s GoEmotions dataset
+* HuggingFace Transformers
+* Ollama project
+
+---
+
+If you like this project, consider giving us a ⭐ on GitHub!
