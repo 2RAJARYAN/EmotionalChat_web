@@ -118,12 +118,12 @@ if user_text:
     emo_str = ", ".join([f"{e} ({p:.2f})" for e, p in detected])
 
     st.markdown("### Detected Emotions")
-    st.markdown(f"**{emo_str}**")
+    st.markdown(f"{emo_str}")
 
     # Conversation history for LLM
     conv_text = "\n".join([f"{m['role'].title()}: {m['text']}" for m in st.session_state.history])
 
-    # Prompt for LLM
+    # Prompt for LLM (With Emotion)
     prompt = f"""
         You are an emotionally intelligent, human-like assistant.
 
@@ -144,8 +144,34 @@ if user_text:
         Now generate your response.
         """
 
+    #  NORMAL LLM CALL (NO EMOTION TAGS)
+    normal_prompt = f"""
+        You are a helpful AI assistant. Respond normally.
+
+        Conversation so far:
+        {conv_text}
+
+        Now generate a helpful response to the user's last message.
+        """
+
+
     with st.spinner("Thinking..."):
         assistant_reply = call_llm(prompt)
+    
+    with st.spinner("Generating normal response..."):
+        normal_reply = call_llm(normal_prompt)
+
+    # Create side-by-side comparison
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Emotion-Aware Response")
+        st.write(assistant_reply)
+
+    with col2:
+        st.subheader("Normal Response")
+        st.write(normal_reply)
+
 
     # Display and store reply
     st.session_state.history.append({"role": "assistant", "text": assistant_reply})
